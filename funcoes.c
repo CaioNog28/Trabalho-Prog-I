@@ -144,6 +144,89 @@ void calcularConsumoPeriodo(int dias) {
     free(medicoes);
 }
 
+void listarMedicoes() {
+    int total;
+    Medicao* medicoes = carregarMedicoes(&total);
+    if (medicoes == NULL || total == 0) {
+        printf("Nenhuma medicao encontrada!\n");
+        return;
+    }
+    
+    printf("\n=== Medicoes Registradas ===\n");
+    for (int i = 0; i < total; i++) {
+        char data[26];
+        strcpy(data, ctime(&medicoes[i].timestamp));
+        data[24] = '\0';
+        printf("\nIndice: %d\n", i + 1);
+        printf("Data: %s\n", data);
+        printf("Consumo: %.2f kWh\n", medicoes[i].consumo_kwh);
+        printf("Tarifa: R$ %.2f\n", medicoes[i].tarifa);
+    }
+    
+    free(medicoes);
+}
+
+void editarMedicao(int indice, Medicao novaMedicao) {
+    int total;
+    Medicao* medicoes = carregarMedicoes(&total);
+    if (medicoes == NULL || total == 0) {
+        printf("Nenhuma medicao encontrada!\n");
+        return;
+    }
+    
+    if (indice < 1 || indice > total) {
+        printf("Indice invalido!\n");
+        free(medicoes);
+        return;
+    }
+    
+    novaMedicao.timestamp = medicoes[indice - 1].timestamp;
+    medicoes[indice - 1] = novaMedicao;
+    
+    FILE* fp = fopen(ARQUIVO_MEDICOES, "wb");
+    if (fp == NULL) {
+        printf("Erro ao abrir arquivo para edicao!\n");
+        free(medicoes);
+        return;
+    }
+    
+    fwrite(medicoes, sizeof(Medicao), total, fp);
+    fclose(fp);
+    free(medicoes);
+    printf("Medicao editada com sucesso!\n");
+}
+
+void excluirMedicao(int indice) {
+    int total;
+    Medicao* medicoes = carregarMedicoes(&total);
+    if (medicoes == NULL || total == 0) {
+        printf("Nenhuma medicao encontrada!\n");
+        return;
+    }
+    
+    if (indice < 1 || indice > total) {
+        printf("Indice invalido!\n");
+        free(medicoes);
+        return;
+    }
+    
+    for (int i = indice - 1; i < total - 1; i++) {
+        medicoes[i] = medicoes[i + 1];
+    }
+    
+    FILE* fp = fopen(ARQUIVO_MEDICOES, "wb");
+    if (fp == NULL) {
+        printf("Erro ao abrir arquivo para exclusao!\n");
+        free(medicoes);
+        return;
+    }
+    
+    fwrite(medicoes, sizeof(Medicao), total - 1, fp);
+    fclose(fp);
+    free(medicoes);
+    printf("Medicao excluida com sucesso!\n");
+}
+
 void analisarPadroes() {
     int total;
     Medicao* medicoes = carregarMedicoes(&total);

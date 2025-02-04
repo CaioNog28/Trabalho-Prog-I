@@ -16,6 +16,9 @@ void identificarPicosConsumo(void);
 void calcularConsumoPeriodo(int dias);
 void analisarPadroes(void);
 void gerarRelatorio(void);
+void editarMedicao(int indice, Medicao novaMedicao);
+void excluirMedicao(int indice);
+void listarMedicoes(void);
 float calcularMediaRecursiva(Medicao* medicoes, int inicio, int fim);
 Medicao* carregarMedicoes(int* total);
 
