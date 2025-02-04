@@ -6,23 +6,46 @@
 #include <time.h>
 #include "funcoes.h"
 
-#define ARQUIVO_MEDICOES "medicoes.dat"
+#define ARQUIVO_MEDICOES "medicoes.csv"
 #define ARQUIVO_RELATORIO "relatorio.txt"
 #define ARQUIVO_SUGESTOES "sugestoes.txt"
 #define ARQUIVO_PICOS "picos.txt"
 
 void salvarMedicao(Medicao med) {
-    FILE* fp = fopen(ARQUIVO_MEDICOES, "ab");
+    FILE* fp;
+    int arquivo_existe = 0;
+    
+    // Verifica se o arquivo já existe
+    if ((fp = fopen(ARQUIVO_MEDICOES, "r"))) {
+        arquivo_existe = 1;
+        fclose(fp);
+    }
+    
+    // Abre o arquivo para anexar dados
+    fp = fopen(ARQUIVO_MEDICOES, "a");
     if (fp == NULL) {
         printf("Erro ao abrir arquivo de medicoes!\n");
         return;
     }
-    fwrite(&med, sizeof(Medicao), 1, fp);
+    
+    // Se o arquivo não existia, escreve o cabeçalho
+    if (!arquivo_existe) {
+        fprintf(fp, "Data,Consumo (kWh),Tarifa (R$)\n");
+    }
+    
+    // Converte o timestamp para string de data/hora
+    char data[26];
+    struct tm* timeinfo = localtime(&med.timestamp);
+    strftime(data, sizeof(data), "%d/%m/%Y %H:%M:%S", timeinfo);
+    
+    // Escreve os dados no formato CSV
+    fprintf(fp, "%s,%.2f,%.2f\n", data, med.consumo_kwh, med.tarifa);
+    
     fclose(fp);
 }
 
 Medicao* carregarMedicoes(int* total) {
-    FILE* fp = fopen(ARQUIVO_MEDICOES, "rb");
+    FILE* fp = fopen(ARQUIVO_MEDICOES, "r");
     if (fp == NULL) {
         printf("Erro ao abrir arquivo de medicoes!\n");
         *total = 0;
@@ -31,30 +54,46 @@ Medicao* carregarMedicoes(int* total) {
     
     Medicao* medicoes = NULL;
     *total = 0;
-    Medicao med;
+    char linha[256];
+    char data[26];
+    float consumo, tarifa;
     
-    while (fread(&med, sizeof(Medicao), 1, fp) == 1) {
-        medicoes = realloc(medicoes, (*total + 1) * sizeof(Medicao));
-        medicoes[*total] = med;
-        (*total)++;
+    // Pula a primeira linha (cabeçalho)
+    fgets(linha, sizeof(linha), fp);
+    
+    // Lê cada linha do arquivo CSV
+    while (fgets(linha, sizeof(linha), fp)) {
+        struct tm tm_data = {0};
+        
+        // Processa a linha CSV
+        if (sscanf(linha, "%d/%d/%d %d:%d:%d,%f,%f",
+                   &tm_data.tm_mday, &tm_data.tm_mon, &tm_data.tm_year,
+                   &tm_data.tm_hour, &tm_data.tm_min, &tm_data.tm_sec,
+                   &consumo, &tarifa) == 8) {
+            
+            // Ajusta os campos da estrutura tm
+            tm_data.tm_mon -= 1;     // Mês começa do 0
+            tm_data.tm_year -= 1900; // Anos desde 1900
+            
+            // Aloca espaço para nova medição
+            medicoes = realloc(medicoes, (*total + 1) * sizeof(Medicao));
+            if (medicoes == NULL) {
+                printf("Erro de alocação de memória!\n");
+                fclose(fp);
+                return NULL;
+            }
+            
+            // Converte a data lida para timestamp
+            medicoes[*total].timestamp = mktime(&tm_data);
+            medicoes[*total].consumo_kwh = consumo;
+            medicoes[*total].tarifa = tarifa;
+            (*total)++;
+        }
     }
     
     fclose(fp);
     return medicoes;
 }
-
-float calcularMediaRecursiva(Medicao* medicoes, int inicio, int fim) {
-    if (inicio == fim) {
-        return medicoes[inicio].consumo_kwh;
-    }
-    
-    int meio = (inicio + fim) / 2;
-    float mediaEsquerda = calcularMediaRecursiva(medicoes, inicio, meio);
-    float mediaDireita = calcularMediaRecursiva(medicoes, meio + 1, fim);
-    
-    return (mediaEsquerda + mediaDireita) / 2.0;
-}
-
 float calcularMediaPeriodo(int dias) {
     int total;
     Medicao* medicoes = carregarMedicoes(&total);
@@ -75,6 +114,23 @@ float calcularMediaPeriodo(int dias) {
     
     free(medicoes);
     return (contPeriodo > 0) ? (somaConsumo / contPeriodo) : 0.0;
+}
+float calcularMediaRecursiva(Medicao* medicoes, int inicio, int fim) {
+    // Caso base: quando só tem um elemento
+    if (inicio == fim) {
+        return medicoes[inicio].consumo_kwh;
+    }
+    
+    // Caso recursivo: divide o array em duas partes
+    int meio = (inicio + fim) / 2;
+    
+    // Calcula a média recursivamente para cada metade
+    float mediaEsquerda = calcularMediaRecursiva(medicoes, inicio, meio);
+    float mediaDireita = calcularMediaRecursiva(medicoes, meio + 1, fim);
+    
+    // Retorna a média entre as duas metades
+    return ((float)(meio - inicio + 1) * mediaEsquerda + 
+            (float)(fim - meio) * mediaDireita) / (fim - inicio + 1);
 }
 
 void identificarPicosConsumo() {
