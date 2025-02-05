@@ -22,17 +22,39 @@ int main()
         printf("8. Excluir medicao\n");
         printf("0. Sair\n");
         printf("Escolha uma opcao: ");
-        scanf("%d", &opcao);
+        if (scanf("%d", &opcao) != 1)
+        {
+            printf("Entrada inválida! Digite um número.\n");
+            while (getchar() != '\n')
+                ;
+            continue;
+        }
 
         switch (opcao)
         {
         case 1:
         {
             Medicao med;
-            printf("Digite o consumo em kWh: ");
-            scanf("%f", &med.consumo_kwh);
-            printf("Digite a tarifa atual: ");
-            scanf("%f", &med.tarifa);
+            do
+            {
+                printf("Digite o consumo em kWh: ");
+                scanf("%f", &med.consumo_kwh);
+                if (med.consumo_kwh < 0)
+                {
+                    printf("O consumo não pode ser negativo!\n");
+                }
+            } while (med.consumo_kwh < 0);
+
+            do
+            {
+                printf("Digite a tarifa atual: ");
+                scanf("%f", &med.tarifa);
+                if (med.tarifa < 0)
+                {
+                    printf("A tarifa não pode ser negativa!\n");
+                }
+            } while (med.tarifa < 0);
+
             med.timestamp = time(NULL);
             salvarMedicao(med);
             printf("Medicao registrada com sucesso!\n");
