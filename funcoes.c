@@ -239,19 +239,28 @@ void editarMedicao(int indice, Medicao novaMedicao) {
     novaMedicao.timestamp = medicoes[indice - 1].timestamp;
     medicoes[indice - 1] = novaMedicao;
     
-    FILE* fp = fopen(ARQUIVO_MEDICOES, "wb");
+    FILE* fp = fopen(ARQUIVO_MEDICOES, "w");
     if (fp == NULL) {
         printf("Erro ao abrir arquivo para edicao!\n");
         free(medicoes);
         return;
     }
+    fprintf(fp, "Data,Consumo (kWh),Tarifa (R$)\n");
     
-    fwrite(medicoes, sizeof(Medicao), total, fp);
+    for (int i = 0; i < total; i++) {
+        char data[26];
+        struct tm* timeinfo = localtime(&medicoes[i].timestamp);
+        strftime(data, sizeof(data), "%d/%m/%Y %H:%M:%S", timeinfo);
+        fprintf(fp, "%s,%.2f,%.2f\n", 
+                data, 
+                medicoes[i].consumo_kwh, 
+                medicoes[i].tarifa);
+    }
+    
     fclose(fp);
     free(medicoes);
     printf("Medicao editada com sucesso!\n");
 }
-
 void excluirMedicao(int indice) {
     int total;
     Medicao* medicoes = carregarMedicoes(&total);
@@ -270,19 +279,29 @@ void excluirMedicao(int indice) {
         medicoes[i] = medicoes[i + 1];
     }
     
-    FILE* fp = fopen(ARQUIVO_MEDICOES, "wb");
+    FILE* fp = fopen(ARQUIVO_MEDICOES, "w");
     if (fp == NULL) {
         printf("Erro ao abrir arquivo para exclusao!\n");
         free(medicoes);
         return;
     }
     
-    fwrite(medicoes, sizeof(Medicao), total - 1, fp);
+    fprintf(fp, "Data,Consumo (kWh),Tarifa (R$)\n");
+    
+    for (int i = 0; i < total - 1; i++) {
+        char data[26];
+        struct tm* timeinfo = localtime(&medicoes[i].timestamp);
+        strftime(data, sizeof(data), "%d/%m/%Y %H:%M:%S", timeinfo);
+        fprintf(fp, "%s,%.2f,%.2f\n", 
+                data, 
+                medicoes[i].consumo_kwh, 
+                medicoes[i].tarifa);
+    }
+    
     fclose(fp);
     free(medicoes);
     printf("Medicao excluida com sucesso!\n");
 }
-
 void analisarPadroes() {
     int total;
     Medicao* medicoes = carregarMedicoes(&total);
